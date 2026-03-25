@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Guessing Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .settings {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .settings label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .settings input {
+            width: 100px;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .start-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        .start-btn:hover {
+            background: #45a049;
+        }
+        .reveal-btn {
+            background: #2196F3;
+            color: white;
+        }
+        .reveal-btn:hover {
+            background: #1976D2;
+        }
+        .next-btn {
+            background: #ff9800;
+            color: white;
+        }
+        .next-btn:hover {
+            background: #e68900;
+        }
+        .game-area {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        .word-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #333;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        .definition-display {
+            font-size: 18px;
+            color: #666;
+            margin: 20px 0;
+            padding: 20px;
+            background: #fff3cd;
+            border-radius: 8px;
+            min-height: 60px;
+            display: none;
+        }
+        .progress {
+            text-align: center;
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .timer {
+            font-size: 24px;
+            color: #ff5722;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .complete {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        .complete h2 {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Word Guessing Game</h1>
+        
+        <div class="settings" id="settings">
+            <label>
+                Number of words to test:
+                <input type="number" id="numWords" value="5" min="1">
+            </label>
+            <label>
+                Time limit per word (seconds):
+                <input type="number" id="timeLimit" value="30" min="5">
+            </label>
+            <button class="start-btn" onclick="startGame()">Start Game</button>
+        </div>
+
+        <div class="game-area" id="gameArea">
+            <div class="progress" id="progress">Word 1 of 5</div>
+            <div class="timer" id="timer">Time: 30s</div>
+            <div class="word-display" id="wordDisplay">Loading...</div>
+            <div class="definition-display" id="definitionDisplay"></div>
+            <button class="reveal-btn" onclick="revealDefinition()">Show Definition</button>
+            <button class="next-btn" onclick="nextWord()">Next Word</button>
+        </div>
+
+        <div class="complete" id="complete">
+            <h2>Game Complete!</h2>
+            <p>You've finished all the words.</p>
+            <button class="start-btn" onclick="resetGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        let words = [];           // All words from Excel
+        let selectedWords = [];   // Words selected for this game
+        let currentIndex = 0;     // Current word index
+        let timer = null;         // Timer reference
+        let timeLeft = 0;         // Time remaining
+
+        // Load Excel file when page loads
+        async function loadWords() {
+            try {
+                const response = await fetch('Words.xlsx');
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const data = XLSX.utils.sheet_to_json(sheet);
+                
+                words = data.map(row => ({
+                    word: row['Word'],
+                    definition: row['Description']
+                }));
+                
+                console.log('Loaded', words.length, 'words');
+            } catch (error) {
+                alert('Error loading Words.xlsx. Make sure the file is in the same folder.');
+            }
+        }
+
+        // Start the game
+        function startGame() {
+            const numWords = parseInt(document.getElementById('numWords').value);
+            const timeLimit = parseInt(document.getElementById('timeLimit').value);
+            
+            if (numWords > words.length) {
+                alert('Not enough words in the file! Only ' + words.length + ' words available.');
+                return;
+            }
+
+            // Shuffle and pick random words
+            selectedWords = [...words].sort(() => Math.random() - 0.5).slice(0, numWords);
+            currentIndex = 0;
+            
+            // Hide settings, show game area
+            document.getElementById('settings').style.display = 'none';
+            document.getElementById('gameArea').style.display = 'block';
+            document.getElementById('complete').style.display = 'none';
+            
+            // Store time limit for timer
+            window.timeLimit = timeLimit;
+            
+            showWord();
+        }
+
+        // Display current word
+        function showWord() {
+            if (currentIndex >= selectedWords.length) {
+                endGame();
+                return;
+            }
+
+            const word = selectedWords[currentIndex];
+            document.getElementById('wordDisplay').textContent = word.word;
+            document.getElementById('definitionDisplay').style.display = 'none';
+            document.getElementById('progress').textContent = 
+                'Word ' + (currentIndex + 1) + ' of ' + selectedWords.length;
+            
+            startTimer();
+        }
+
+        // Reveal the definition
+        function revealDefinition() {
+            const word = selectedWords[currentIndex];
+            document.getElementById('definitionDisplay').textContent = word.definition;
+            document.getElementById('definitionDisplay').style.display = 'block';
+        }
+
+        // Move to next word
+        function nextWord() {
+            clearInterval(timer);
+            currentIndex++;
+            showWord();
+        }
+
+        // Start countdown timer
+        function startTimer() {
+            clearInterval(timer);
+            timeLeft = window.timeLimit;
+            updateTimerDisplay();
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    revealDefinition();
+                }
+            }, 1000);
+        }
+
+        // Update timer display
+        function updateTimerDisplay() {
+            document.getElementById('timer').textContent = 'Time: ' + timeLeft + 's';
+        }
+
+        // End the game
+        function endGame() {
+            clearInterval(timer);
+            document.getElementById('gameArea').style.display = 'none';
+            document.getElementById('complete').style.display = 'block';
+        }
+
+        // Reset game to settings
+        function resetGame() {
+            document.getElementById('complete').style.display = 'none';
+            document.getElementById('settings').style.display = 'block';
+        }
+
+        // Load words when page loads
+        loadWords();
+    </script>
+</body>
+</html>
