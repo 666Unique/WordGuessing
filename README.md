@@ -10,12 +10,19 @@ This is a simple website that helps students learn vocabulary by displaying word
 
 ### Starting the Game
 
-1. Make sure `Words.xlsx` and `index.html` are in the same folder
-2. Start a local web server:
+1. **Open terminal/command prompt** and navigate to the project folder:
+   ```
+   cd c:\ADisk\Project\WordGuessing
+   ```
+   
+2. **Start the web server** (IMPORTANT: Must run from the project directory!):
    ```
    python -m http.server 8000
    ```
-3. Open your browser and go to: `http://localhost:8000`
+   
+3. **Open your browser** and go to: `http://localhost:8000`
+
+⚠️ **Important:** The server must be started from the project directory where `index.html` and `Words.xlsx` are located, otherwise you'll see a directory listing instead of the website.
 
 ### Playing the Game
 
