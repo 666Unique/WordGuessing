@@ -70,6 +70,13 @@
         .next-btn:hover {
             background: #e68900;
         }
+        .quit-btn {
+            background: #f44336;
+            color: white;
+        }
+        .quit-btn:hover {
+            background: #da190b;
+        }
         .game-area {
             text-align: center;
             padding: 40px;
@@ -139,6 +146,7 @@
             <div class="definition-display" id="definitionDisplay"></div>
             <button class="reveal-btn" onclick="revealDefinition()">Show Definition</button>
             <button class="next-btn" onclick="nextWord()">Next Word</button>
+            <button class="quit-btn" onclick="quitGame()">Quit Game</button>
         </div>
 
         <div class="complete" id="complete">
@@ -158,19 +166,34 @@
         // Load Excel file when page loads
         async function loadWords() {
             try {
-                const response = await fetch('Words.xlsx');
+                // Add cache-busting parameter to force fresh fetch
+                const url = 'Words.xlsx?' + new Date().getTime();
+                console.log('Fetching:', url);
+                const response = await fetch(url);
+                console.log('Response status:', response.status);
                 const arrayBuffer = await response.arrayBuffer();
+                console.log('Array buffer size:', arrayBuffer.byteLength);
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                console.log('Workbook sheets:', workbook.SheetNames);
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                console.log('Sheet range:', sheet['!ref']);
                 const data = XLSX.utils.sheet_to_json(sheet);
+                console.log('Raw data rows:', data.length);
+                console.log('First row keys:', Object.keys(data[0]));
                 
                 words = data.map(row => ({
                     word: row['Word'],
                     definition: row['Description']
                 }));
                 
-                console.log('Loaded', words.length, 'words');
+                // Filter out any rows with missing data
+                words = words.filter(w => w.word && w.definition);
+                
+                console.log('Loaded', words.length, 'valid words');
+                console.log('All words:', words.map(w => w.word));
+                console.log('Sample word:', words[0]);
             } catch (error) {
+                console.error('Error:', error);
                 alert('Error loading Words.xlsx. Make sure the file is in the same folder.');
             }
         }
@@ -262,6 +285,13 @@
         // Reset game to settings
         function resetGame() {
             document.getElementById('complete').style.display = 'none';
+            document.getElementById('settings').style.display = 'block';
+        }
+
+        // Quit game and return to settings
+        function quitGame() {
+            clearInterval(timer);
+            document.getElementById('gameArea').style.display = 'none';
             document.getElementById('settings').style.display = 'block';
         }
 

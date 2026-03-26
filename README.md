@@ -32,6 +32,7 @@ This is a simple website that helps students learn vocabulary by displaying word
 4. **Students guess the word** displayed on screen
 5. **Click "Show Definition"** to reveal the answer
 6. **Click "Next Word"** to move to the next word
+7. **Click "Quit Game"** to exit early and return to settings
 
 ### Updating Word List
 
@@ -49,6 +50,7 @@ To add or change words:
 - ✅ Countdown timer
 - ✅ Show/hide definition button
 - ✅ Progress indicator
+- ✅ Quit game button to return to settings
 - ✅ Simple, clean interface
 
 ## Files
